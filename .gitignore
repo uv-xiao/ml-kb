@@ -1,0 +1,39 @@
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor/IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+venv/
+env/
+.env
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Large files (PDFs can be tracked selectively)
+# Uncomment to ignore all PDFs:
+# papers/*.pdf
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+
+# Build outputs
+dist/
+build/
+*.egg-info/
+
+# Local configuration (keep template, ignore local overrides)
+.claude/settings.local.json
