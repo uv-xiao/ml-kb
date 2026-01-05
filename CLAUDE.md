@@ -12,7 +12,7 @@ mlkb/
 ├── notes/                 # Technical notes and summaries
 │   ├── topics/            # Topic-organized notes
 │   └── quick-ref/         # Quick reference materials
-├── code-repos/            # Analyzed repositories metadata
+├── code-repos/            # Code repositories (git submodules)
 ├── reports/               # Generated technical reports
 │   ├── surveys/           # Literature surveys
 │   ├── comparisons/       # Comparative analyses
@@ -41,6 +41,9 @@ Analyzes research papers to extract key contributions, methods, results, and lim
 ### repo-analysis
 Analyzes ML/LLM code repositories to understand architecture, trace implementations, and generate documentation.
 
+### llm-code-analysis
+Deep-dive analysis of LLM/ML implementations (PyTorch, Triton, CUDA). Generates visual explanations, pseudocode abstractions, and technical tutorials with ASCII diagrams.
+
 ### technical-reports
 Generates comprehensive technical reports including surveys, comparisons, and implementation guides.
 
@@ -55,9 +58,10 @@ Use `/add-ref` to add a new reference with metadata to REFERENCES.md
 3. The paper-analysis skill will auto-trigger
 
 ### Analyzing a Code Repository
-1. Provide repo URL or add to `code-repos/`
-2. Ask specific questions about architecture or implementations
-3. Generate documentation or walkthroughs
+1. Add repo as submodule: `git submodule add <url> code-repos/<name>`
+2. Use `/analyze-llm code-repos/<name>` for deep analysis
+3. Ask specific questions about architecture or implementations
+4. Analysis reports saved to `reports/implementations/`
 
 ### Generating Reports
 1. Reference source materials (papers, code, notes)

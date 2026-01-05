@@ -1,3 +1,8 @@
+---
+name: repo-analysis
+description: Analyzes ML/LLM code repositories to understand architecture, trace implementations, and generate technical documentation. Use when exploring repository structure, understanding model implementations, tracing pipelines, or generating codebase documentation.
+---
+
 # Repository Analysis Skill
 
 Analyze ML/LLM code repositories to understand architecture, trace implementations, and generate technical documentation.

@@ -1,3 +1,8 @@
+---
+name: technical-reports
+description: Generates comprehensive technical reports including literature surveys, comparative analyses, and implementation guides. Use when creating surveys, comparing approaches or implementations, writing technical guides, or synthesizing knowledge from multiple sources.
+---
+
 # Technical Reports Skill
 
 Generate comprehensive technical reports including surveys, comparisons, and implementation guides.

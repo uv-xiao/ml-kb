@@ -1,3 +1,8 @@
+---
+name: paper-analysis
+description: Analyzes research papers to extract key information, summarize contributions, and generate structured notes. Use when analyzing papers, summarizing findings, extracting methodologies, comparing research, or creating literature reviews.
+---
+
 # Paper Analysis Skill
 
 Analyze research papers to extract key information, summarize contributions, and generate structured notes.

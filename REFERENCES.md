@@ -12,7 +12,7 @@ Master index of all references in the ML/LLM knowledge base.
 
 | Repository | URL | Language | Topics | Status |
 |------------|-----|----------|--------|--------|
-| <!-- Add repos here --> | | | | |
+| triton-distributed | https://github.com/ByteDance-Seed/Triton-distributed | Python/Triton | megakernel, LLM inference, tensor parallelism | Analyzed |
 
 ## Blog Posts & Articles
 
