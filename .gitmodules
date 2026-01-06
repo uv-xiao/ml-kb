@@ -1,3 +1,6 @@
 [submodule "code-repos/triton-distributed"]
 	path = code-repos/triton-distributed
 	url = https://github.com/ByteDance-Seed/Triton-distributed.git
+[submodule "code-repos/mini-sglang"]
+	path = code-repos/mini-sglang
+	url = https://github.com/sgl-project/mini-sglang.git

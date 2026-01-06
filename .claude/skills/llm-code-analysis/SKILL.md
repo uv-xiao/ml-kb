@@ -1,21 +1,24 @@
 ---
 name: llm-code-analysis
-description: Deep-dive analysis of LLM/ML model implementations in PyTorch, JAX, Triton, CUDA, or ML compiler frameworks. Generates visual explanations with ASCII diagrams, pseudocode abstractions, and technical tutorials. Use when analyzing LLM implementations, understanding ML compilers, reverse-engineering pipelines, tracing data flow, understanding megakernels, or analyzing distributed execution.
+description: Deep-dive analysis of LLM/ML model implementations and inference infrastructure in PyTorch, JAX, Triton, CUDA, or ML compiler frameworks. Covers serving systems (vLLM, SGLang, TensorRT-LLM), KV cache management, request scheduling, and batching strategies. Generates visual explanations with ASCII diagrams, pseudocode abstractions, and technical tutorials. Use when analyzing LLM implementations, inference engines, serving systems, ML compilers, megakernels, or distributed execution.
 ---
 
-# LLM Implementation Analysis Skill
+# LLM Implementation & Infrastructure Analysis Skill
 
-Deep-dive analysis of LLM/ML model implementations in PyTorch, JAX, Triton, CUDA, or any ML compiler framework. Generates intuitive visual explanations, pseudocode abstractions, and technical tutorials.
+Deep-dive analysis of LLM/ML model implementations and inference serving infrastructure. Covers model architectures (transformers, attention, MLP), ML compilers (Triton, CUDA, XLA), and serving systems (vLLM, SGLang, TensorRT-LLM). Generates intuitive visual explanations, pseudocode abstractions, and technical tutorials.
 
 ## When to Use
 
 This skill auto-triggers when:
 - Analyzing LLM model implementations (transformers, attention, MLP, etc.)
 - Understanding ML compiler code (Triton, CUDA kernels, XLA)
+- Analyzing LLM inference serving systems (vLLM, SGLang, TensorRT-LLM)
+- Understanding KV cache management and PagedAttention
 - Reverse-engineering training/inference pipelines
 - Tracing data flow through model architectures
 - Understanding megakernel or fused operator implementations
-- Analyzing distributed/parallel execution strategies
+- Analyzing request scheduling and batching strategies
+- Understanding distributed/parallel execution strategies
 
 ## Analysis Framework
 
@@ -80,6 +83,155 @@ This skill auto-triggers when:
    - Parallelism strategy: TP (Tensor), PP (Pipeline), SP (Sequence), DP (Data)
    - Communication primitives: all_reduce, all_gather, reduce_scatter
    - Compute-communication overlap
+
+---
+
+## Inference Infrastructure Analysis
+
+For LLM serving systems (vLLM, SGLang, TensorRT-LLM, etc.), analyze these additional aspects:
+
+### Phase A: System Architecture
+
+1. **Service Topology**
+   - Frontend API server (OpenAI-compatible, gRPC, etc.)
+   - Tokenizer service (separate or integrated)
+   - Backend scheduler/engine
+   - Multi-GPU coordination
+
+2. **Request Lifecycle**
+   ```
+   Request → Tokenize → Queue → Schedule → Prefill → Decode → Detokenize → Response
+   ```
+
+### Phase B: Scheduling & Batching
+
+1. **Scheduling Strategies**
+   - Continuous batching vs static batching
+   - Prefill-decode disaggregation
+   - Priority scheduling
+   - Preemption policies
+
+2. **Batch Formation**
+   - How requests are grouped
+   - Dynamic batch size limits
+   - Chunked prefill for memory control
+
+3. **Overlap Scheduling**
+   - CPU-GPU overlap (prepare next batch while GPU busy)
+   - Zero-overhead scheduling techniques
+
+### Phase C: Memory Management
+
+1. **KV Cache Architecture**
+   ```
+   ┌─────────────────────────────────────────────────┐
+   │              KV CACHE MANAGEMENT                 │
+   ├─────────────────────────────────────────────────┤
+   │                                                  │
+   │  PagedAttention (vLLM style):                   │
+   │  ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐               │
+   │  │Blk 0│ │Blk 1│ │Blk 2│ │Blk 3│  Physical     │
+   │  └──┬──┘ └──┬──┘ └──┬──┘ └──┬──┘   Blocks      │
+   │     │       │       │       │                   │
+   │  Block Table (per request):                     │
+   │  ┌───────────────────────┐                      │
+   │  │ Req A: [0, 2, 3, _]   │                      │
+   │  │ Req B: [1, _, _, _]   │                      │
+   │  └───────────────────────┘                      │
+   │                                                  │
+   │  RadixAttention (SGLang style):                 │
+   │  ┌─────────────────────────┐                    │
+   │  │      Radix Tree         │ Shared prefix      │
+   │  │         /\              │ reuse across       │
+   │  │        /  \             │ requests           │
+   │  │       A    B            │                    │
+   │  └─────────────────────────┘                    │
+   └─────────────────────────────────────────────────┘
+   ```
+
+2. **Memory Allocation**
+   - Block size and allocation granularity
+   - Pre-allocation vs on-demand
+   - Eviction policies (LRU, reference counting)
+
+3. **Prefix Caching**
+   - Hash-based block deduplication
+   - Automatic prefix sharing
+   - Cache hit/miss handling
+
+### Phase D: Request Flow Diagram
+
+```
+                    LLM SERVING SYSTEM ARCHITECTURE
+                    ================================
+
+┌─────────────┐     ┌──────────────┐     ┌──────────────────────────┐
+│   Client    │────▶│   API Server │────▶│       Scheduler          │
+│  Requests   │     │  (FastAPI)   │     │                          │
+└─────────────┘     └──────────────┘     │  ┌────────────────────┐  │
+                                         │  │   Waiting Queue    │  │
+                                         │  └─────────┬──────────┘  │
+                                         │            │             │
+                                         │  ┌─────────▼──────────┐  │
+                                         │  │   Running Batch    │  │
+                                         │  │  (Continuous)      │  │
+                                         │  └─────────┬──────────┘  │
+                                         └────────────┼─────────────┘
+                                                      │
+                    ┌─────────────────────────────────▼─────────────────────────────────┐
+                    │                         MODEL ENGINE                               │
+                    │  ┌─────────────┐    ┌─────────────┐    ┌─────────────────────┐   │
+                    │  │   Prefill   │    │   Decode    │    │     KV Cache        │   │
+                    │  │   (Batch)   │───▶│   (Token)   │◀──▶│   (Paged/Radix)     │   │
+                    │  └─────────────┘    └─────────────┘    └─────────────────────┘   │
+                    │                                                                    │
+                    │  ┌────────────────────────────────────────────────────────────┐  │
+                    │  │                    GPU Execution                            │  │
+                    │  │  [Attention Kernel] [MLP Kernel] [AllReduce] [Sampling]    │  │
+                    │  └────────────────────────────────────────────────────────────┘  │
+                    └───────────────────────────────────────────────────────────────────┘
+```
+
+### Phase E: Key Metrics & Bottlenecks
+
+1. **Latency Components**
+   - Time to First Token (TTFT)
+   - Inter-Token Latency (ITL)
+   - End-to-end latency
+
+2. **Throughput Factors**
+   - Tokens per second (decode)
+   - Requests per second
+   - GPU utilization
+
+3. **Memory Bottlenecks**
+   - KV cache size vs batch size tradeoff
+   - Memory fragmentation
+   - Swap/offload overhead
+
+### Inference System FAQ
+
+Answer these for serving systems:
+
+1. **Batching Strategy**
+   - Continuous or static batching?
+   - How are new requests added mid-batch?
+   - Preemption support?
+
+2. **KV Cache Design**
+   - Paged or contiguous?
+   - Block size?
+   - Prefix caching mechanism?
+
+3. **Scheduling**
+   - FCFS, priority, or custom policy?
+   - Prefill-decode separation?
+   - Multi-request fairness?
+
+4. **Scalability**
+   - Multi-GPU support (TP/PP)?
+   - Disaggregated architecture?
+   - Load balancing?
 
 ---
 

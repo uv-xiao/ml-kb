@@ -467,4 +467,264 @@ q, k, v = split(qkv, dim=-1)
 
 ---
 
+## 11. Inference Serving Patterns
+
+### 11.1 Continuous Batching
+```python
+class ContinuousBatcher:
+    """
+    Dynamic batching: add/remove requests between iterations
+    Key insight: Don't wait for all requests to finish
+    """
+    def __init__(self):
+        self.running = []      # Currently generating
+        self.waiting = []      # Queued requests
+
+    def step(self):
+        # Add new requests that fit in memory
+        while self.waiting and can_add_request():
+            req = self.waiting.pop(0)
+            self.running.append(req)
+            prefill(req)  # Process prompt
+
+        # Decode one token for all running requests
+        for req in self.running:
+            token = decode_one_token(req)
+            req.output.append(token)
+
+        # Remove finished requests
+        self.running = [r for r in self.running if not r.is_done()]
+```
+- **Pros:** Higher GPU utilization, lower latency
+- **Cons:** Variable batch size, memory management complexity
+
+### 11.2 PagedAttention (vLLM)
+```python
+class PagedKVCache:
+    """
+    KV cache stored in non-contiguous blocks
+    Like OS virtual memory paging
+    """
+    def __init__(self, block_size=16, num_blocks=1000):
+        self.block_size = block_size
+        # Physical blocks: [num_blocks, block_size, num_heads, head_dim]
+        self.k_cache = torch.zeros(num_blocks, block_size, ...)
+        self.v_cache = torch.zeros(num_blocks, block_size, ...)
+        self.free_blocks = list(range(num_blocks))
+
+    def allocate_block(self):
+        return self.free_blocks.pop()
+
+    def free_block(self, block_id):
+        self.free_blocks.append(block_id)
+
+class Request:
+    def __init__(self):
+        # Logical to physical block mapping
+        self.block_table = []  # [logical_block_id] -> physical_block_id
+
+    def append_token(self, kv_cache):
+        if need_new_block():
+            physical_id = kv_cache.allocate_block()
+            self.block_table.append(physical_id)
+        # Write KV to current block
+```
+- **Memory efficiency:** ~4% waste vs 60-80% traditional
+- **Key insight:** Blocks allocated on-demand, not pre-reserved
+
+### 11.3 RadixAttention (SGLang)
+```python
+class RadixTree:
+    """
+    Prefix tree for KV cache sharing across requests
+    Enables automatic prefix caching
+    """
+    def __init__(self):
+        self.root = RadixNode()
+
+    def insert(self, token_ids, kv_blocks):
+        """Store KV cache keyed by token sequence"""
+        node = self.root
+        for i, token in enumerate(token_ids):
+            if token not in node.children:
+                node.children[token] = RadixNode()
+            node = node.children[token]
+            node.kv_block = kv_blocks[i]
+
+    def match_prefix(self, token_ids):
+        """Find longest cached prefix"""
+        node = self.root
+        matched = []
+        for token in token_ids:
+            if token in node.children:
+                node = node.children[token]
+                matched.append(node.kv_block)
+            else:
+                break
+        return matched  # Reuse these KV blocks
+```
+- **Use case:** Multi-turn chat, few-shot prompts
+- **Benefit:** Avoid recomputing shared prefixes
+
+### 11.4 Chunked Prefill
+```python
+def chunked_prefill(prompt_tokens, chunk_size=512):
+    """
+    Process long prompts in chunks to control memory
+    Interleave with decode for better latency
+    """
+    for i in range(0, len(prompt_tokens), chunk_size):
+        chunk = prompt_tokens[i:i+chunk_size]
+        # Process chunk, update KV cache
+        forward_chunk(chunk)
+
+        # Optionally interleave decode steps
+        if has_decode_requests():
+            decode_step()
+```
+- **Purpose:** Prevent long prompts from blocking decodes
+- **Tradeoff:** Slightly higher prefill latency
+
+### 11.5 Overlap Scheduling
+```python
+class OverlapScheduler:
+    """
+    Prepare next batch on CPU while GPU executes current batch
+    Eliminates CPU scheduling overhead
+    """
+    def __init__(self):
+        self.current_batch = None
+        self.next_batch = None
+
+    async def run(self):
+        # Prepare first batch
+        self.next_batch = await self.prepare_batch()
+
+        while True:
+            # Swap: next becomes current
+            self.current_batch = self.next_batch
+
+            # Launch GPU work (non-blocking)
+            gpu_future = self.execute_on_gpu(self.current_batch)
+
+            # While GPU busy, prepare next batch on CPU
+            self.next_batch = await self.prepare_batch()
+
+            # Wait for GPU
+            await gpu_future
+```
+- **Benefit:** Hide CPU overhead behind GPU execution
+- **Requirement:** Async execution, double buffering
+
+### 11.6 Prefill-Decode Disaggregation
+```python
+"""
+Separate prefill and decode into different engines
+Prefill: Compute-bound, benefits from larger batches
+Decode: Memory-bound, benefits from smaller batches
+"""
+
+class PrefillEngine:
+    """Optimized for throughput on long prompts"""
+    def __init__(self, gpus):
+        self.batch_size = 64  # Large batches
+        self.gpus = gpus
+
+class DecodeEngine:
+    """Optimized for latency on token generation"""
+    def __init__(self, gpus):
+        self.batch_size = 256  # Many concurrent requests
+        self.gpus = gpus
+
+class DisaggregatedSystem:
+    def __init__(self):
+        self.prefill = PrefillEngine(gpus=[0, 1])
+        self.decode = DecodeEngine(gpus=[2, 3, 4, 5])
+        self.kv_transfer = KVTransferService()
+
+    def handle_request(self, request):
+        # Prefill on dedicated engine
+        kv_cache = self.prefill.process(request.prompt)
+
+        # Transfer KV to decode engine
+        self.kv_transfer.send(kv_cache, self.decode)
+
+        # Decode on dedicated engine
+        return self.decode.generate(request, kv_cache)
+```
+- **Benefit:** Optimal hardware utilization for each phase
+- **Complexity:** KV cache transfer between engines
+
+---
+
+## 12. Request Management Patterns
+
+### 12.1 Request States
+```python
+class RequestState(Enum):
+    WAITING = "waiting"      # In queue
+    RUNNING = "running"      # Being processed
+    PREEMPTED = "preempted"  # Swapped out
+    FINISHED = "finished"    # Complete
+
+class Request:
+    def __init__(self, prompt, params):
+        self.prompt_tokens = tokenize(prompt)
+        self.output_tokens = []
+        self.state = RequestState.WAITING
+        self.kv_block_ids = []
+        self.arrival_time = time.time()
+```
+
+### 12.2 Preemption Policy
+```python
+def preempt_if_needed(running, waiting, memory_limit):
+    """
+    Swap out lower priority requests when memory constrained
+    """
+    while get_memory_usage() > memory_limit and running:
+        # Select victim (e.g., longest running, lowest priority)
+        victim = select_victim(running)
+
+        # Swap KV cache to CPU (or discard for recompute)
+        swap_to_cpu(victim.kv_block_ids)
+
+        victim.state = RequestState.PREEMPTED
+        running.remove(victim)
+        waiting.insert(0, victim)  # Re-queue with priority
+```
+
+### 12.3 Speculative Decoding
+```python
+def speculative_decode(draft_model, target_model, k=4):
+    """
+    Use small model to draft k tokens, verify with large model
+    Accept matching prefix, reject and resample divergence
+    """
+    # Draft k tokens with small model
+    draft_tokens = []
+    for _ in range(k):
+        token = draft_model.sample()
+        draft_tokens.append(token)
+
+    # Verify all k tokens in parallel with target model
+    target_logits = target_model.forward(draft_tokens)
+
+    # Accept/reject based on probability comparison
+    accepted = []
+    for i, (draft_tok, logits) in enumerate(zip(draft_tokens, target_logits)):
+        if accept_criterion(draft_tok, logits):
+            accepted.append(draft_tok)
+        else:
+            # Resample from adjusted distribution
+            accepted.append(resample(logits, draft_model.logits[i]))
+            break
+
+    return accepted
+```
+- **Speedup:** 2-3x for well-matched draft/target models
+- **Overhead:** Draft model computation + verification
+
+---
+
 *Reference for LLM Code Analysis Skill*
