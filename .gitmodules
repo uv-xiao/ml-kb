@@ -4,3 +4,6 @@
 [submodule "code-repos/mini-sglang"]
 	path = code-repos/mini-sglang
 	url = https://github.com/sgl-project/mini-sglang.git
+[submodule "code-repos/nanoflow"]
+	path = code-repos/nanoflow
+	url = git@github.com:efeslab/Nanoflow.git
