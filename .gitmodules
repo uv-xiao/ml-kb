@@ -10,3 +10,6 @@
 [submodule "code-repos/flashinfer"]
 	path = code-repos/flashinfer
 	url = https://github.com/flashinfer-ai/flashinfer.git
+[submodule "code-repos/sglang"]
+	path = code-repos/sglang
+	url = git@github.com:sgl-project/sglang.git
