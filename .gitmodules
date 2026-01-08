@@ -7,3 +7,6 @@
 [submodule "code-repos/nanoflow"]
 	path = code-repos/nanoflow
 	url = git@github.com:efeslab/Nanoflow.git
+[submodule "code-repos/flashinfer"]
+	path = code-repos/flashinfer
+	url = https://github.com/flashinfer-ai/flashinfer.git
