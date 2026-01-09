@@ -18,7 +18,7 @@ import statistics
 from typing import List, Dict, Tuple
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-SERVER_URL = "http://localhost:30000"
+SERVER_URL = "http://localhost:30001"
 OUTPUT_DIR = "./profiling_artifacts"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 

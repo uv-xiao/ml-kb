@@ -29,7 +29,7 @@ Launches SGLang server on GPU 1 with Qwen3-0.6B model.
 
 **Expected output**:
 ```
-Server running on http://0.0.0.0:30000
+Server running on http://0.0.0.0:30001
 Loaded model: Qwen/Qwen3-0.6B
 Memory usage: ~1.5GB
 ```
@@ -196,14 +196,14 @@ If venv has issues, use Docker:
 ```bash
 docker run --gpus '"device=1"' \
     --shm-size 32g \
-    -p 30000:30000 \
+    -p 30001:30001 \
     -v ~/.cache/huggingface:/root/.cache/huggingface \
     --ipc=host \
     lmsysorg/sglang:latest \
     python3 -m sglang.launch_server \
         --model-path Qwen/Qwen3-0.6B \
         --host 0.0.0.0 \
-        --port 30000
+        --port 30001
 ```
 
 ## References

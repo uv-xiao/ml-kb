@@ -10,7 +10,7 @@ echo "=========================================="
 
 python -m sglang.bench_serving \
     --backend sglang \
-    --base-url http://localhost:30000 \
+    --base-url http://localhost:30001 \
     --num-prompts 100 \
     --random-input 256 \
     --random-output 64 \
@@ -24,7 +24,7 @@ echo "=========================================="
 
 python -m sglang.bench_serving \
     --backend sglang \
-    --base-url http://localhost:30000 \
+    --base-url http://localhost:30001 \
     --num-prompts 500 \
     --random-input 512 \
     --random-output 128 \
