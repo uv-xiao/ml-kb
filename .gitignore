@@ -37,3 +37,7 @@ build/
 
 # Local configuration (keep template, ignore local overrides)
 .claude/settings.local.json
+
+# Hands-on learning results (ephemeral profiling outputs)
+hands_on/*/results/
+hands_on/*/.env

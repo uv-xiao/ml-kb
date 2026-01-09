@@ -13,6 +13,13 @@ mlkb/
 │   ├── topics/            # Topic-organized notes
 │   └── quick-ref/         # Quick reference materials
 ├── code-repos/            # Code repositories (git submodules)
+├── tutorials/             # Learning tutorials (git submodules)
+│   └── kernels/           # CUDA kernel development tutorial
+├── hands_on/              # Hands-on learning sessions
+│   └── <project>/         # Per-project learning materials
+│       ├── scripts/       # Execution and profiling scripts
+│       ├── results/       # Profiling outputs (gitignored)
+│       └── reports/       # Analysis reports and guides
 ├── reports/               # Generated technical reports
 │   ├── surveys/           # Literature surveys
 │   ├── comparisons/       # Comparative analyses
@@ -21,7 +28,9 @@ mlkb/
     ├── skills/            # Custom Claude Code skills
     │   ├── paper-analysis/
     │   ├── repo-analysis/
-    │   └── technical-reports/
+    │   ├── technical-reports/
+    │   ├── tutorial-generator/
+    │   └── hands-on-learning/
     └── commands/          # Slash commands for quick tasks
 ```
 
@@ -46,6 +55,49 @@ Deep-dive analysis of LLM/ML implementations (PyTorch, Triton, CUDA). Generates 
 
 ### technical-reports
 Generates comprehensive technical reports including surveys, comparisons, and implementation guides.
+
+### tutorial-generator
+Creates comprehensive tutorials and learning guides from existing analysis notes, reports, and codebase documentation. Synthesizes technical materials into structured educational content with examples, ASCII diagrams, and practical exercises.
+
+### hands-on-learning
+Hands-on exploration and profiling of LLM serving projects. Analyzes codebases, detects environment (GPUs, CUDA), creates experiment plans, executes with hardware-level profiling (NSys, NCU), and generates comprehensive reports. All outputs organized in `hands_on/<project>/` with scripts, results (gitignored), and reports subdirectories.
+
+## Tutorials
+
+The `tutorials/` directory contains hands-on learning materials organized by topic:
+
+### kernels (tutorials/kernels/)
+Comprehensive CUDA kernel development tutorial covering:
+- GPU architecture & CUDA basics (Chapters 1-3)
+- CUTLASS & CuTe/CuteDSL (Chapters 4-5)
+- Advanced CUDA & DSLs: Triton, TileLang (Chapters 6-8)
+- LLM Kernels: Attention, MoE accelerators (Chapters 9-10)
+- Capstone projects (Chapter 11)
+
+### Adding/Updating Tutorials
+Use `/update-tutorial` to update tutorials from existing analysis and reports, or create tutorials manually following the structure in each tutorial's README.
+
+## Hands-On Learning
+
+The `hands_on/` directory contains structured learning sessions for LLM serving projects:
+
+```
+hands_on/
+├── sglang/              # SGLang inference framework
+├── mini-sglang/         # Lightweight inference framework
+└── flashinfer/          # FlashInfer attention kernels
+```
+
+### Running Hands-On Learning
+Use the `hands-on-learning` skill to start a new session:
+```
+/hands-on-learning <project-name>
+```
+
+Each session creates:
+- `scripts/` - Profiling and experiment scripts
+- `results/` - Profiling outputs (gitignored)
+- `reports/` - Analysis reports, development guides, and findings
 
 ## Common Tasks
 

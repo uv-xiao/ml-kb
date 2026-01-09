@@ -13,3 +13,9 @@
 [submodule "code-repos/sglang"]
 	path = code-repos/sglang
 	url = git@github.com:sgl-project/sglang.git
+[submodule "tutorials/kernels"]
+	path = tutorials/kernels
+	url = git@github.com:uv-xiao/kernel-tute.git
+[submodule "code-repos/flashinfer-bench"]
+	path = code-repos/flashinfer-bench
+	url = https://github.com/flashinfer-ai/flashinfer-bench.git

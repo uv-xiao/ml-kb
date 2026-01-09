@@ -231,6 +231,8 @@ Design experiments to detect surprises.
 - Ignore configuration options
 - Skip the analysis phase
 - Focus only on averages
+- Report metrics without hardware context
+- Describe "what" without "how it runs on hardware"
 
 **DO**:
 - Track specific events informed by code analysis
@@ -238,3 +240,107 @@ Design experiments to detect surprises.
 - Vary configurations systematically
 - Understand before measuring
 - Look at distributions and timelines
+- Always pair process events with hardware state
+- Explain bottlenecks in terms of SM/TC/HBM/stalls
+
+---
+
+## CRITICAL: Joint Process+Hardware Analysis
+
+**Every observation MUST combine process flow with hardware behavior.**
+
+### Bad Analysis (Process Only)
+```
+"The attention kernel takes 0.45ms per layer"
+```
+
+### Bad Analysis (Metrics Only)
+```
+"SM utilization: 68%, Memory BW: 72%"
+```
+
+### Good Analysis (Process + Hardware)
+```
+Event: Flash Attention (prefill, layer 0)
+├── Duration: 0.45ms (37% of layer time)
+├── Algorithm: FlashAttention-2 with tiling
+│   ├── Q tiles: 4 (128 tokens each)
+│   └── Warp specialization: TMA producer + TC consumers
+├── Hardware state:
+│   ├── SM util: 68% (good)
+│   ├── TC active: 35% (data feeding limited)
+│   ├── HBM BW: 72% (near memory-bound)
+│   └── Warp stalls:
+│       ├── long_scoreboard: 42% ← waiting for HBM
+│       └── barrier: 28% ← producer-consumer sync
+├── Interpretation:
+│   └── Mixed compute/memory, barrier stalls expected for
+│       warp specialization, TC limited by HBM read rate
+└── Optimization hint: Increase SMEM for more tiling
+```
+
+### Execution Story Template
+
+Every experiment should produce an "execution story":
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    EXECUTION STORY: [Title]                         │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  Configuration: [model, batch, seq_len, etc.]                       │
+│                                                                     │
+│  PHASE 1: [Name]                                                    │
+│  ═══════════════                                                    │
+│                                                                     │
+│  Time T0: [Event]                                                   │
+│  ├── What happens: [process description]                           │
+│  ├── Hardware: SM:__%, TC:__%, HBM:__%, stalls: ___               │
+│  └── Observation: [insight from hardware state]                    │
+│                                                                     │
+│  Time T1: [Event]                                                   │
+│  ├── What happens: [process description]                           │
+│  ├── Hardware: SM:__%, TC:__%, HBM:__%, stalls: ___               │
+│  └── Observation: [insight from hardware state]                    │
+│                                                                     │
+│  TRANSITION: [Old State] → [New State]                              │
+│  ════════════════════════════════════                               │
+│  ├── What changes: [kernel switch, config change, etc.]            │
+│  └── Hardware change: [what metrics shift and why]                 │
+│                                                                     │
+│  PHASE 2: [Name]                                                    │
+│  ...                                                                │
+│                                                                     │
+│  SUMMARY                                                            │
+│  ═══════                                                            │
+│  ├── Hotspots: [kernel/event] at __% of time                       │
+│  ├── Bottleneck: [compute/memory/communication]                    │
+│  ├── Hardware insight: [key observation]                           │
+│  └── Actionable: [what could be optimized]                         │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Hardware Context Requirements
+
+For EVERY kernel profiled, capture and report:
+
+| Metric | What to Record | Why It Matters |
+|--------|----------------|----------------|
+| Occupancy | Achieved vs theoretical | Register/SMEM limiters |
+| SM utilization | % of peak | Kernel efficiency |
+| TC utilization | % active cycles | Compute efficiency |
+| HBM bandwidth | % of peak | Memory-bound detection |
+| Warp stall reasons | Top 3 with % | Bottleneck identification |
+| Roofline position | Compute vs memory bound | Optimization direction |
+
+### Interpretation Guidelines
+
+| Observation | Hardware Context | Interpretation |
+|-------------|-----------------|----------------|
+| Kernel slow | High HBM%, low TC% | Memory-bound, optimize data reuse |
+| Kernel slow | Low HBM%, high barrier% | Sync overhead, reduce barriers |
+| Kernel slow | High TC%, low SM% | Good compute, low parallelism |
+| Kernel slow | High stall_long_scoreboard% | Waiting for HBM, add prefetch |
+| Kernel slow | High stall_short_scoreboard% | SMEM bank conflicts |
+| Variable latency | ITL increases with KV length | Linear memory-bound scaling |

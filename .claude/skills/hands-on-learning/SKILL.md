@@ -14,13 +14,62 @@ This skill mimics how a **human expert learns a new project**:
 3. **Hardware is truth** - Everything runs on real hardware; understand SM/register/memory behavior
 4. **Interpret goals** - Translate vague objectives into specific tracking requirements
 
+## Directory Structure
+
+**IMPORTANT**: All hands-on learning sessions MUST use this directory structure:
+
+```
+hands_on/
+└── <project_name>/
+    ├── scripts/                    # Execution and profiling scripts
+    │   ├── setup.sh                # Environment setup
+    │   ├── profile.sh              # Profiling commands
+    │   └── run_experiments.py      # Experiment runner
+    ├── results/                    # Profiling outputs and logs (.gitignored)
+    │   ├── nsys/                   # Nsight Systems traces
+    │   ├── ncu/                    # Nsight Compute reports
+    │   └── logs/                   # Execution logs
+    └── reports/                    # Analysis reports and development guides
+        ├── INDEX.md                # Navigation and summary
+        ├── plan.md                 # Goals and tracking requirements
+        ├── environment.md          # Environment detection results
+        ├── analysis.md             # Codebase analysis findings
+        ├── experiments.md          # Per-experiment findings
+        ├── kernel-dev-guide.md     # Kernel development guide (if applicable)
+        └── final-report.md         # Synthesis and conclusions
+```
+
+### Environment Variables
+
+When working with a project, use these variables:
+
+```bash
+export PROJECT_NAME="<your-project-name>"
+export HANDS_ON_BASE="$(pwd)/hands_on"
+export PROJECT_DIR="${HANDS_ON_BASE}/${PROJECT_NAME}"
+export SCRIPTS_DIR="${PROJECT_DIR}/scripts"
+export RESULTS_DIR="${PROJECT_DIR}/results"
+export REPORTS_DIR="${PROJECT_DIR}/reports"
+```
+
+### Initialization
+
+Before starting any hands-on learning session:
+
+```bash
+PROJECT_NAME="<project-name>"
+mkdir -p "hands_on/${PROJECT_NAME}/scripts"
+mkdir -p "hands_on/${PROJECT_NAME}/results"
+mkdir -p "hands_on/${PROJECT_NAME}/reports"
+```
+
 ## Skill Structure
 
 This skill consists of multiple focused modules:
 
 | File | Purpose |
 |------|---------|
-| `SKILL.md` | Overview and workflow (this file) |
+| `SKILL.md` | Overview, directory structure, workflow (this file) |
 | `environment.md` | Environment detection (GPU, topology, dependencies) |
 | `analysis-first.md` | Pre-run codebase analysis strategy |
 | `planning.md` | Plan creation with requirements interpretation |
@@ -35,28 +84,33 @@ This skill consists of multiple focused modules:
 ├──────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
 │  ┌─────────────────┐                                                         │
+│  │ 0. INITIALIZE   │  Create project directory structure                    │
+│  └────────┬────────┘  → hands_on/<project>/scripts,results,reports          │
+│           │                                                                  │
+│           ▼                                                                  │
+│  ┌─────────────────┐                                                         │
 │  │ 1. ENVIRONMENT  │  Detect GPU, topology, create isolated env             │
-│  └────────┬────────┘  → See environment.md                                   │
+│  └────────┬────────┘  → Save to reports/environment.md                      │
 │           │                                                                  │
 │           ▼                                                                  │
 │  ┌─────────────────┐                                                         │
 │  │ 2. ANALYZE FIRST│  Run llm-code-analysis or repo-analysis               │
-│  └────────┬────────┘  → See analysis-first.md                               │
+│  └────────┬────────┘  → Save to reports/analysis.md                         │
 │           │                                                                  │
 │           ▼                                                                  │
 │  ┌─────────────────┐                                                         │
 │  │ 3. PLAN         │  Interpret goals → specific tracking requirements      │
-│  └────────┬────────┘  → See planning.md                                      │
+│  └────────┬────────┘  → Save to reports/plan.md                             │
 │           │                                                                  │
 │           ▼                                                                  │
 │  ┌─────────────────┐                                                         │
 │  │ 4. EXECUTE      │  Run with hardware-level profiling                     │
-│  └────────┬────────┘  → See profiling.md                                     │
+│  └────────┬────────┘  → Scripts in scripts/, outputs in results/            │
 │           │                                                                  │
 │           ▼                                                                  │
 │  ┌─────────────────┐                                                         │
 │  │ 5. REPORT       │  Process details, events, hardware behavior            │
-│  └─────────────────┘  → See reporting.md                                     │
+│  └─────────────────┘  → Save to reports/final-report.md                     │
 │                                                                              │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -96,7 +150,28 @@ Everything runs on physical hardware. Always track:
 - **Memory bandwidth**: Are we hitting HBM limits?
 - **NVLink/PCIe**: Communication bottlenecks?
 
-### Principle 4: Interpret User Goals
+### Principle 4: Joint Process+Hardware Analysis (CRITICAL)
+
+**Principles 2 and 3 must be applied TOGETHER, not separately.**
+
+**Bad** (process only): "The attention kernel takes 0.45ms"
+**Bad** (metrics only): "SM utilization is 68%, HBM is 72%"
+
+**Good** (combined):
+```
+Event: Flash Attention (prefill)
+├── Duration: 0.45ms (37% of layer time)
+├── Algorithm: FlashAttention-2 with tiling
+├── Hardware state:
+│   ├── SM util: 68%, TC: 35%, HBM: 72%
+│   └── Warp stalls: long_scoreboard 42%, barrier 28%
+├── Interpretation: Mixed compute/memory bound
+└── Bottleneck: TC limited by HBM read rate
+```
+
+Every observation must answer: **"What is happening AND how is the hardware behaving during this event?"**
+
+### Principle 5: Interpret User Goals
 
 User says: "I want to understand FlashInfer performance"
 
@@ -110,7 +185,17 @@ This is vague. Think about what they might actually want:
 
 ## Quick Start
 
+### Step 0: Initialize Project
+
+```bash
+PROJECT_NAME="my-project"
+mkdir -p "hands_on/${PROJECT_NAME}/scripts"
+mkdir -p "hands_on/${PROJECT_NAME}/results"
+mkdir -p "hands_on/${PROJECT_NAME}/reports"
+```
+
 ### Step 1: Environment Setup
+
 ```bash
 # Detect environment (see environment.md for details)
 nvidia-smi --query-gpu=name,memory.total,compute_cap --format=csv
@@ -119,42 +204,77 @@ nvidia-smi topo -m
 # Create isolated environment
 micromamba create -n project_env python=3.11 -y
 micromamba activate project_env
+
+# Save environment info
+nvidia-smi > "hands_on/${PROJECT_NAME}/reports/environment.md"
 ```
 
 ### Step 2: Pre-Analysis
+
 ```
 Use /analyze-llm or repo-analysis skill to generate:
 - Architecture overview
 - Key component identification
 - Performance-critical paths
+
+Save output to: hands_on/${PROJECT_NAME}/reports/analysis.md
 ```
 
 ### Step 3: Plan Creation
+
 ```
 Based on analysis + user goal, define:
 - What specific events to track
 - Which kernels to profile
 - What hardware metrics matter
 - Expected behavior vs actual
+
+Save plan to: hands_on/${PROJECT_NAME}/reports/plan.md
 ```
 
 ### Step 4: Execute with Profiling
+
 ```bash
-# Hardware-level profiling (see profiling.md)
-ncu --set full -o profile_output python script.py
+# Create profiling script
+cat > "hands_on/${PROJECT_NAME}/scripts/profile.sh" << 'EOF'
+#!/bin/bash
+PROJECT_DIR="$(dirname "$0")/.."
+RESULTS_DIR="${PROJECT_DIR}/results"
+
+# Hardware-level profiling
+ncu --set full -o "${RESULTS_DIR}/ncu/profile" python script.py
 
 # Or system-level tracing
-nsys profile --trace=cuda,nvtx python script.py
+nsys profile -o "${RESULTS_DIR}/nsys/trace" --trace=cuda,nvtx python script.py
+EOF
+chmod +x "hands_on/${PROJECT_NAME}/scripts/profile.sh"
 ```
 
 ### Step 5: Generate Report
+
 ```
 Focus on:
 - Timeline of events (not just averages)
 - Hardware utilization patterns
 - Anomalies and interesting observations
 - "Story" of what happens during execution
+
+Save to: hands_on/${PROJECT_NAME}/reports/final-report.md
 ```
+
+## Output File Locations
+
+| Output Type | Location |
+|-------------|----------|
+| Environment info | `hands_on/<project>/reports/environment.md` |
+| Codebase analysis | `hands_on/<project>/reports/analysis.md` |
+| Experiment plan | `hands_on/<project>/reports/plan.md` |
+| Profiling scripts | `hands_on/<project>/scripts/` |
+| Profiling outputs | `hands_on/<project>/results/` (gitignored) |
+| Experiment results | `hands_on/<project>/reports/experiments.md` |
+| Kernel dev guide | `hands_on/<project>/reports/kernel-dev-guide.md` |
+| Final report | `hands_on/<project>/reports/final-report.md` |
+| Index/navigation | `hands_on/<project>/reports/INDEX.md` |
 
 ## Module Index
 
