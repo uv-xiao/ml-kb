@@ -2,8 +2,8 @@
 
 **Project:** SGLang LLM Serving System Analysis
 **Environment:** 7x NVIDIA A100 80GB (CUDA 12.5)
-**Date:** 2026-01-09
-**Status:** Codebase Analysis Complete, Experiments Ready for Execution
+**Date:** 2026-01-10
+**Status:** Complete with Experiment Results
 
 ---
 
@@ -16,7 +16,35 @@ This hands-on learning session provides a comprehensive analysis of SGLang, a pr
 3. **Continuous Batching** - Dynamic scheduling with overlap execution
 4. **Tensor Parallelism** - NCCL-based multi-GPU scaling
 
-All profiling scripts and experiment infrastructure are ready for execution.
+Experiments executed with Qwen/Qwen3-0.6B model on A100 80GB, demonstrating near-linear decode scaling (46x throughput at BS=64 vs BS=1).
+
+---
+
+## Experiment Results Summary
+
+**Model:** Qwen/Qwen3-0.6B | **SGLang:** 0.5.6.post3.dev1000 | **GPU:** A100 80GB PCIe
+
+### Serving Benchmark (50 requests, 128 input / 64 output tokens)
+
+| Metric | Value |
+|--------|-------|
+| Request Throughput | 5.17 req/s |
+| Output Token Throughput | 151.04 tok/s |
+| Peak Output Throughput | 337.00 tok/s |
+| Mean TTFT | 30.40 ms |
+| Mean TPOT | 2.46 ms |
+| P99 ITL | 13.85 ms |
+
+### Decode Scaling (One-Batch Benchmark)
+
+| Batch Size | Decode Throughput | Scaling | Efficiency |
+|------------|------------------|---------|------------|
+| 1 | 339 tok/s | 1.0x | baseline |
+| 4 | 1,181 tok/s | 3.5x | 87% |
+| 16 | 4,507 tok/s | 13.3x | 83% |
+| 64 | 15,756 tok/s | 46.5x | 73% |
+
+**Key Finding:** Near-linear scaling confirms decode is memory-bound (HBM bandwidth bottleneck). Prefill achieves 150K tok/s at BS=64 (~10x faster per token than decode).
 
 ---
 
@@ -292,22 +320,24 @@ Bottleneck      Mixed                       Memory
 
 ---
 
-## Next Steps
+## Completed Experiments
 
-### Immediate Actions
-1. Run `scripts/00_check_env.py` to validate environment
-2. Execute experiments in sequence (01-06)
-3. Collect results in `results/` directory
+### Executed Benchmarks
+1. **Serving Benchmark** - 50 concurrent requests with rate limiting
+2. **One-Batch Benchmark** - Decode scaling across batch sizes 1, 4, 16, 64
 
-### Analysis Phase
-4. Review Nsight Systems traces for CPU-GPU overlap
-5. Analyze Nsight Compute reports for kernel bottlenecks
-6. Document findings in `reports/experiments.md`
+### Key Observations
+- FlashInfer backend working correctly (default, no issues)
+- CUDA graph capture for 36 batch sizes (~4s startup overhead)
+- Near-linear decode scaling confirms memory-bound operation
+- 2.46ms TPOT indicates ~406 tok/s per request
 
-### Optimization Opportunities
-7. Profile production workloads for specific bottlenecks
-8. Consider custom kernel development for identified hotspots
-9. Evaluate alternative TP configurations for your model sizes
+### Available for Further Exploration
+- Nsight Systems profiling (`scripts/04_nsys_profile.sh`)
+- Nsight Compute attention analysis (`scripts/05_ncu_attention.sh`)
+- TP scaling experiments (`scripts/06_tp_scaling.sh`)
+- RadixCache hit/miss analysis (`scripts/02_radix_cache_analysis.py`)
+- Backend comparison (`scripts/03_backend_comparison.py`)
 
 ---
 

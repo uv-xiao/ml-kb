@@ -14,7 +14,7 @@
 | [analysis.md](analysis.md) | Codebase architecture analysis | Complete |
 | [plan.md](plan.md) | Experiment design and methodology | Complete |
 | [kernel-dev-guide.md](kernel-dev-guide.md) | Kernel development reference | Complete |
-| [experiments.md](experiments.md) | Experiment results (TODO) | Pending |
+| [experiments.md](experiments.md) | Experiment results with benchmarks | Complete |
 | [final-report.md](final-report.md) | Summary and conclusions | Complete |
 
 ---
