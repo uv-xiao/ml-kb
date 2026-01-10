@@ -19,3 +19,6 @@
 [submodule "code-repos/flashinfer-bench"]
 	path = code-repos/flashinfer-bench
 	url = https://github.com/flashinfer-ai/flashinfer-bench.git
+[submodule "code-repos/pto-isa"]
+	path = code-repos/pto-isa
+	url = https://gitcode.com/cann/pto-isa.git
