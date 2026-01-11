@@ -22,3 +22,10 @@
 [submodule "code-repos/pto-isa"]
 	path = code-repos/pto-isa
 	url = https://gitcode.com/cann/pto-isa.git
+[submodule "code-repos/luminal"]
+	path = code-repos/luminal
+	url = https://github.com/luminal-ai/luminal.git
+[submodule "code-repos/mirage-mpk"]
+	path = code-repos/mirage-mpk
+	url = https://github.com/mirage-project/mirage.git
+	branch = mpk
